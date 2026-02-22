@@ -1,4 +1,4 @@
-# ergotheater.de
+# acta est - ergotherapie
 
-eine Partnerseite vom "Acta Est Theaterstudio"
-under constraction
+"Acta Est: Aktives Leben"
+
