@@ -1,4 +1,3 @@
 # acta est - ergotherapie
 
-"Acta Est: Aktives Leben"
-
+"Acta Est: Praxis für Ergotherapie"
