@@ -1,741 +1,668 @@
-ChatGPT
-
-Sun, Jul 12 at 3:18 PM
-Pasted text.txt
-Document
-what is wrong? WHY IS NOT SECURE?
-
-is it ok?
-
-I tied to change the custom name
-
-point to and valus (cloudns) is the same?
-
-now i wait... right?
-
-how long is the DNS check going to last?
-
-is it ok?
-
-is it ok?
-
-now how do i enforce https?
-
-ergotheater.de and ergotherapieinkoeln.de are by namecheap and verified. actaest.de is by cloud ns and is not. is everything ok?
-
-i click verify...
-
-is it right?
-
-Monday 10:22 PM
-still not verified. what is wrong?
-
-here?
-
-DNS audit _ DNS checker _ DNS report _ dns.computer.pdf
-PDF
-Here?
-
-Yes, this is the correct dns.computer report, and it reveals the actual problem.
-
-The report does not test the GitHub TXT verification record. More importantly, it shows that the public ClouDNS nameservers are still serving the old DNS zone:
-
-actaest.de → 192.30.252.153
-actaest.de → 192.30.252.154
-
-The same old addresses are returned for www.actaest.de.
-
-But inside your ClouDNS control panel you already changed the records to:
-
-185.199.108.153
-185.199.109.153
-185.199.110.153
-185.199.111.153
-
-The report also shows the public SOA serial as:
-
-2018090108
-
-while your ClouDNS zone check showed:
-
-2026071209
-
-That discrepancy proves that the public nameservers are serving an old version of the zone. This also explains why GitHub cannot find the new TXT verification record. Authoritative nameservers are supposed to publish the current zone data, and the SOA serial is used to identify the zone version.
-What to do in ClouDNS
-
-Return to the actaest.de DNS records page and look at the upper toolbar.
-
-You previously had a button or status labelled:
-
-Updated
-
-Click it if it is clickable, or look for an action such as:
-
-Update zone
-Apply changes
-Publish
-Synchronize
-
-Also check whether the zone is accidentally configured as:
-
-Secondary / Slave zone
-Parked zone
-
-instead of a normal writable Master DNS zone.
-
-Do not change the GitHub TXT record again. The record entry itself is correct; the current issue is that ClouDNS is not publicly publishing the new version.
-After updating the zone
-
-Run dns.computer again. The new report must show:
-
-185.199.108.153
-185.199.109.153
-185.199.110.153
-185.199.111.153
-
-and the SOA serial should no longer be 2018090108.
-
-Only after that should you click Verify in GitHub again. GitHub’s verification depends on the TXT record being publicly returned by the authoritative DNS servers.
-
-At present, waiting alone is unlikely to solve it: the public report is still reading the old 2018 zone, not merely a short-lived cached value.
-
-should I activate the inactive??? The arrows are the inactice
-
-update is not clickable. is "last update"
-
-No. The screen you opened is “Create new monitoring check”. It is unrelated to publishing or updating your DNS zone.
-
-    “Last update” in the DNS table is only the date when that individual record was last edited.
-
-    The small monitoring icon opens this monitoring form.
-
-    The double arrows control Dynamic DNS, not zone updates.
-
-Do not create this monitoring check and do not activate Dynamic DNS. ClouDNS monitoring merely checks whether a DNS service or record responds; it does not update or synchronize the zone.
-
-The more important issue is that your dns.computer report was generated from an old public zone: it returned the old GitHub IPs and the SOA serial 2018090108, while your current control panel shows new records.
-
-Go back to the main actaest.de DNS-zone page and look for the zone type/status near the domain name. We need to determine whether this is an active Master zone or an old/secondary zone. The monitoring screen will not help with that.
-
-Today 3:48 PM
-Still github cant verify 1 week after
-
-After one week, this is not propagation. The decisive issue is that the DNS zone you are editing in ClouDNS is apparently not the zone being served publicly.
-
-Your earlier public DNS audit showed:
-
-    public SOA serial: 2018090108
-
-    public A records: 192.30.252.153 and 192.30.252.154
-
-But your current ClouDNS panel shows:
-
-    records updated on 12.07.26
-
-    A records 185.199.108.153 through 185.199.111.153
-
-    the GitHub TXT verification record
-
-That means the authoritative ClouDNS servers were still serving an older zone, even though the nameserver names themselves matched.
-What to do now
-
-Do not change the TXT record again. It is formatted correctly.
-
-Contact ClouDNS support and send them this exact message:
-
-    Hello,
-    the DNS zone for actaest.de in my ClouDNS account contains updated records, including:
-
-    _github-pages-challenge-actaest-de.actaest.de TXT 2f3bbe4050a1536497e82ef4e150d7
-
-    and the GitHub Pages A records:
-
-    185.199.108.153
-    185.199.109.153
-    185.199.110.153
-    185.199.111.153
-
-    However, the authoritative nameservers ns1.cloudns.net through ns4.cloudns.net are still publicly serving an old zone with SOA serial 2018090108 and the old A records 192.30.252.153 and 192.30.252.154.
-
-    Please check whether there is an old, duplicate, secondary or unsynchronised DNS zone for actaest.de and publish the current zone from my account.
-
-GitHub requires the TXT record to be visible directly through the domain’s public authoritative DNS. Waiting only helps for up to roughly 24 hours; after one week, the record is not being published from the zone GitHub is querying.
-Do not do these things
-
-Do not:
-
-    activate Dynamic URL;
-
-    change DNSSEC;
-
-    recreate the TXT record;
-
-    change the four GitHub A records;
-
-    repeatedly delete and re-add the domain in GitHub.
-
-The problem is now on the ClouDNS zone-publication/account side, not in the record syntax shown in your screenshot.
-
-Pasted text(1).txt
-Document
-The Index file of ergotherapieinkoeln is uploaded. ergotherapieinkoeln has different contetn. what can be the problem?
-
-The uploaded index.html is not the main problem. It clearly contains the Ergotheater / Ergotherapie-in-Köln content: the title, description, navigation, logo and text all refer to the therapy project.
-
-The likely problem is this:
-Both domains are pointing to the same GitHub Pages site
-
-Your DNS record is:
-
-www.ergotherapieinkoeln.de
-CNAME → actaest-de.github.io
-
-That only identifies your GitHub account’s Pages host. GitHub then uses the custom-domain setting of a specific repository to decide which repository/site should answer.
-
-If ergotherapieinkoeln.de, ergotheater.de or actaest.de are attached to the same repository, they will show the same deployed content. Merely uploading a different index.html somewhere in GitHub does not guarantee that this repository or folder is the active publishing source.
-Check these three points
-
-Open the repository where you uploaded the Ergotherapie-in-Köln index.html:
-
-Repository → Settings → Pages
-
-Under Build and deployment, confirm:
-
-Source: Deploy from a branch
-Branch: main
-Folder: /(root)
-
-If your index.html is in another place, select the matching source:
-
-main /docs
-
-or the correct branch.
-
-GitHub only publishes files from the branch and folder configured under Pages. The index.html must be at the top level of that selected publishing folder.
-The custom domain must be in the correct repository
-
-In that same repository, the custom domain must be:
-
-www.ergotherapieinkoeln.de
-
-Not:
-
-www.ergotheater.de
-www.actaest.de
-
-Then open the repositories for the other websites and check their Pages settings. Each separate website needs:
-
-    its own repository or independently deployed Pages source;
-
-    its own custom domain;
-
-    its own correct index.html.
-
-A single GitHub Pages site cannot display three different home pages merely because three DNS names point to actaest-de.github.io. The content is determined by the repository/site to which the custom domain is attached. GitHub also stores the custom domain in a CNAME file in the publishing source when branch deployment is used.
-Also inspect the CNAME file
-
-In the root of the published branch, open the file named:
-
-CNAME
-
-For the Ergotherapie-in-Köln repository it should contain exactly:
-
-www.ergotherapieinkoeln.de
-
-Only one line. No https://, no second domain.
-
-If it contains www.ergotheater.de or www.actaest.de, GitHub is deploying the wrong domain association.
-Most probable diagnosis
-
-You uploaded the correct Ergotherapie-in-Köln HTML, but one of these is wrong:
-
-    It was uploaded into the wrong repository.
-
-    GitHub Pages publishes a different branch or /docs folder.
-
-    The custom domain is attached to the wrong repository.
-
-    The repository’s CNAME file still contains another domain.
-
-    The deployment did not complete after the upload.
-
-Check Repository → Actions as well. The latest Pages deployment must have a green checkmark and must have run after the new index.html was uploaded.
-
-
-The screenshot identifies the likely problem:
-GitHub is publishing from gh-pages, not from main
-
-Your active publishing source is:
-
-Branch: gh-pages
-Folder: /(root)
-
-Therefore, GitHub serves only the files located in the root of the gh-pages branch. Uploading the new index.html to main, another branch or another folder will not change the website. GitHub publishes changes only from the branch and folder selected here.
-Check now
-
-Go to the repository’s Code page and use the branch selector:
-
-main ▼
-
-Change it to:
-
-gh-pages
-
-Then inspect the index.html in that branch.
-
-It must contain the new Ergotheater content, including:
-
-<title>Acta Est: Ergotheater</title>
-
-and the text:
-
-Ergotherapie und Theater
-Demnächst in Köln
-
-Those elements are present in the file you uploaded here.
-Two valid solutions
-Solution A — upload the files to gh-pages
-
-Keep the settings as they are and upload:
-
-    index.html
-
-    css
-
-    js
-
-    img
-
-    any other required files
-
-directly into the root of the gh-pages branch.
-Solution B — publish from main
-
-Use this only when the complete website files are already in the root of main.
-
-On the current screen:
-
-    Open the branch dropdown currently showing gh-pages.
-
-    Select main.
-
-    Keep /(root).
-
-    Click Save.
-
-Then GitHub will publish the index.html from the root of main.
-Important detail
-
-The screenshot says:
-
-    Last deployed by actaest-de last week
-
-That means GitHub has not deployed your recent upload from the active publishing source. After correcting the branch or uploading to gh-pages, check:
-
-Repository → Actions
-
-A new pages build and deployment run should appear. Wait until it has a green checkmark, then reload the site with:
-
-Ctrl + F5
-
-The custom domain and HTTPS are basically working. The wrong content is most likely a publishing-branch problem, not a DNS problem.
-
-
 <!doctype html>
+<html class="no-js" lang="de" xmlns="http://www.w3.org/1999/html">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-LC3QW7XEHS"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
 
-<html class="no-js" lang="de" xmlns="http://www.w3.org/1999/html"> <head> <!-- Google tag (gtag.js) --> <script async src="https://www.googletagmanager.com/gtag/js?id=G-LC3QW7XEHS"></script> <script> window.dataLayer = window.dataLayer || []; function gtag(){dataLayer.push(arguments);} gtag('js', new Date());
-
-gtag('config', 'G-LC3QW7XEHS');
+  gtag('config', 'G-LC3QW7XEHS');
 </script>
 
-<meta charset="utf-8"> <meta http-equiv="x-ua-compatible" content="ie=edge"> <title>Acta Est: Ergotheater </title> <meta name="description" content="Praxis für Ergotherapie in Köln – kreative Therapie mit Theatermethoden. Für Erwachsene mit psychosozialem Unterstützungsbedarf. Jetzt mitmachen!">
+  <meta charset="utf-8">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  <title>Acta Est: Ergotheater </title>
+  <meta name="description" content="Praxis für Ergotherapie in Köln – kreative Therapie mit Theatermethoden. Für Erwachsene mit psychosozialem Unterstützungsbedarf. Jetzt mitmachen!">
 
-<meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
 
-<meta property="og:url" content="http://www.ergotherapieinkoeln.de/"/> <meta property="og:type" content="website"/> <meta property="og:title" content="Acta Est - Praxis für Ergotherapie in Köln"/>
+  <meta property="og:url" content="http://www.ergotherapieinkoeln.de/"/>
+  <meta property="og:type" content="website"/>
+  <meta property="og:title" content="Acta Est - Praxis für Ergotherapie in Köln"/>
 
-<meta property="og:description" content="Kreative Ergotherapie in Köln: Ergotheater kombiniert Ergotherapie und Theater – für psychosoziale Teilhabe, Selbstwirksamkeit & Ausdruck in einer Gruppe."/>
+  <meta property="og:description" content="Kreative Ergotherapie in Köln: Ergotheater kombiniert Ergotherapie und Theater – für psychosoziale Teilhabe, Selbstwirksamkeit & Ausdruck in einer Gruppe."/>
 
-<meta property="og:image" content="http://www.ergotheater.de/img/gA1.png"/>
+  <meta property="og:image" content="http://www.ergotheater.de/img/gA1.png"/>
 
-<link rel="stylesheet" href="css/style.css"> <link rel="stylesheet" href="https://d1azc1qln24ryf.cloudfront.net/114779/Socicon/style-cf.css?rd5re8"> </head> <body> <!-- Google Tag Manager (noscript) --> <noscript> <iframe src="https://www.googletagmanager.com/ns.html?id=GTM-WVPMP5R" height="0" width="0" style="display:none;visibility:hidden"></iframe> </noscript> <!-- End Google Tag Manager (noscript) --> <section id="top" class="cover-container"> <section class="cover-2 text-left"> <nav class="navbar navbar-expand-lg navbar-dark navbar-custom"> <div class="container"> <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbar-2" aria-controls="navbar-2" aria-expanded="false" aria-label="Toggle navigation"> <span class="navbar-toggler-icon"></span> </button> <div class="collapse navbar-collapse" id="navbar-2"> <ul class="navbar-nav mt-2 mt-md-0"> <li class="nav-item"> <a class="nav-link" href="#Konzept">Das Konzept</a> </li> <li class="nav-item"> <a class="nav-link" href="#angebote">Angebote</a> </li>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="https://d1azc1qln24ryf.cloudfront.net/114779/Socicon/style-cf.css?rd5re8">
+</head>
+<body>
+<!-- Google Tag Manager (noscript) -->
+<noscript>
+  <iframe src="https://www.googletagmanager.com/ns.html?id=GTM-WVPMP5R"
+          height="0" width="0" style="display:none;visibility:hidden"></iframe>
+</noscript>
+<!-- End Google Tag Manager (noscript) -->
+<section id="top" class="cover-container">
+<section class="cover-2 text-left">
+  <nav class="navbar navbar-expand-lg navbar-dark navbar-custom">
+    <div class="container">
+      <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbar-2"
+              aria-controls="navbar-2" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbar-2">
+        <ul class="navbar-nav mt-2 mt-md-0">
+          <li class="nav-item">
+            <a class="nav-link" href="#Konzept">Das Konzept</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="#angebote">Angebote</a>
+          </li>
+         
+          <li class="nav-item">
+            <a class="nav-link" href="#aktuell">Aktuelle Termine</a>
+          </li>
 
-      <li class="nav-item">
-        <a class="nav-link" href="#aktuell">Aktuelle Termine</a>
-      </li>
-
-      <li class="nav-item">
-        <a class="nav-link" href="#about">Über uns</a>
-      <li class="nav-item">
-        <a class="nav-link" href="#contact">Kontakt</a>
-      </li>
-      <li class="nav-item">
-        <a class="nav-link" href="https://www.actaest.de">Acta Est Theaterstudio</a>
-      </li>
-    </ul>
-  </div>
-</div>
-
-</nav>
-
-        <div class=>
-    <div class="cover-container">
-      <div class="cover-inner container">
-        <div class="row justify-center">
-          <div class=" col-lg-5 mb-5 ml-5 mr-5 offset-lg-2 text-center">
-            <img class="img-fluid mt-5 mb-5" src="img/logoergotherapie.png">
-          </div>
-          <div class="col-lg-5 mt-md-5 mb-5 text-center text-lg-center">
-           <h2 class="jumbotron-heading" >
-    <span style="color: green;  font-size: 0.6em;
-      font-weight: bold;">Ergotherapie und Theater <br> Demnächst in Köln
-    </span>
-             </h2>
-      <h3><strong>Du bist Akteur*in deiner Entwicklung</strong></h3>
-        <br/><b><justify> Ergotheater verbindet die kreative Kraft des Theaters mit den bewährten Methoden der Ergotherapie.
-
-Wir schaffen klare Strukturen und fördern psychosoziale Teilhabe – speziell für
+          <li class="nav-item">
+            <a class="nav-link" href="#about">Über uns</a>
+          <li class="nav-item">
+            <a class="nav-link" href="#contact">Kontakt</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="https://www.actaest.de">Acta Est Theaterstudio</a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+  
+            <div class=>
+        <div class="cover-container">
+          <div class="cover-inner container">
+            <div class="row justify-center">
+              <div class=" col-lg-5 mb-5 ml-5 mr-5 offset-lg-2 text-center">
+                <img class="img-fluid mt-5 mb-5" src="img/logoergotherapie.png">
+              </div>
+              <div class="col-lg-5 mt-md-5 mb-5 text-center text-lg-center">
+               <h2 class="jumbotron-heading" >
+        <span style="color: green;  font-size: 0.6em;
+          font-weight: bold;">Ergotherapie und Theater <br> Demnächst in Köln
+        </span>
+                 </h2>
+          <h3><strong>Du bist Akteur*in deiner Entwicklung</strong></h3>
+            <br/><b><justify> Ergotheater verbindet die kreative Kraft des Theaters mit den bewährten Methoden der Ergotherapie.
+Wir schaffen klare Strukturen und fördern psychosoziale Teilhabe – speziell für 
 Erwachsene, die neue Wege suchen, um sich einzubringen, Verantwortung zu übernehmen und gemeinsam etwas zu gestalten.
 </justify></b>
-<br> <br>
-<b><span style="color: green; font-weight: bold;">Ganz gleich, ob auf der Bühne oder im Hintergrund:<br>Du spielst eine große Rolle.</span></b></p>
-<div class="list-group">
-
-      </div>
-         <p class="lead">
-        <a href="https://www.facebook.com/profile.php?id=61576335102510"
-           class="btn btn-facebook btn-lg mb-2 mr-2 ml-2 pill-btn">
-          <i class="icon socicon-facebook"></i>Facebook</a>
-          <a href="https://www.instagram.com/ergotheater/"
-           class="btn btn-insta btn-lg mb-2 mr-2 ml-2 pill-btn">
-          <i class="icon socicon-instagram"></i><b>Instagram</b></a>
-        <a href="#contact"
-           class="btn btn-danger btn-lg mb-2 mr-2 ml-2 pill-btn">
-          <i class="icon socicon-mail"></i>Kontakt</a>
-      </p>
-    </div>
-  </div>
-</div>
-
-</div> </section> </section>
-
-<div class="container text-center mt-4 mb-2"> <p style="color: #444444; font-weight: bold; font-size: 1.1em;"> Die Bilder wurden von einer KI generiert und orientieren sich an realen Fotovorlagen </p> </div>
-
-<section id="gallery-d" class="gallery-2 mb-5"> <div class="container-fluid d-none d-sm-block"> <div class="row mt-5 no-gutters"> <div class="col-sm-6 col-md-3 item" style="background-image: url(img/gA1.png)"> </div> <div class="col-sm-6 col-md-3 item" style="background-image: url(img/gA2.png)"> </div> <div class="col-sm-6 col-md-3 item" style="background-image: url(img/gA3.png)"> </div> <div class="col-sm-6 col-md-3 item" style="background-image: url(img/gA4.png)"> </div> </div> </div> </section>
-
-<section id="Konzept" class="content-5"> <div class="container mt-5 mb-5 pl-4 pr-4"> <div class="text-center"> <h2><strong>Das Konzept</strong></h2> <div class="divider"></div> <div class="text-left"> <h3><strong>Ergotherapie und Theater in Köln</strong></h3> <p><br> <strong>Ergotheater</strong> ist ein ergotherapeutisch begleitetes Gruppenangebot für Erwachsene, bei dem sich alles um Theater, Begegnung und persönliche Entwicklung dreht. In einem festen Zeitraum von zwölf Wochen arbeitet die Gruppe an einem gemeinsamen Theaterprojekt. Dabei geht es nicht nur ums Schauspiel – sondern um viel mehr: <br><br> Du kannst dich kreativ einbringen, neue Rollen ausprobieren oder dich auch im Hintergrund engagieren – z. B. in Technik, Requisite oder Organisation. Körperwahrnehmung, Sprechübungen, Rollenspiele und thematische Gespräche gehören genauso dazu wie echte Bühnenmomente – wenn du möchtest.<br> <strong>Du brauchst keine Vorerfahrung. Und du musst nicht auf die Bühne. </strong> Wer lieber hinter den Kulissen mitarbeitet, ist genauso ein*e wichtige*r Akteur*in. <br><br> Das Ergotheater bietet dir: <br> <ul> <li>eine feste Struktur im Alltag</li> <li>einen sicheren Raum, um dich auszuprobieren</li> <li>Kontakt mit anderen Menschen mit ähnlichen Herausforderungen</li> <li>die Chance, dich selbstwirksam und wertvoll zu erleben</li> </ul> Geleitet wird das Ergotheater von Antonis Chrysoulakis (staatlich anerkannter Ergotherapeut mit langjähriger Theatererfahrung). <br> <br>
-
-  <h3><strong>Akteur*in heißt: Ich bin Mitgestalter*in</strong></h3>
-  <p><br>
-    Im <strong>Ergotheater</strong> sind alle Mitwirkenden <strong>Akteur*innen</strong> – unabhängig davon, ob sie spielen, Technik betreuen oder mitgestalten.  
-  Sie handeln aktiv – im Projekt und in ihrem eigenen Leben
-  </p>
-  <p>
-  Du bist nicht einfach Teilnehmer*in.  
-  Du übernimmst Verantwortung, entfaltest deine Fähigkeiten und entdeckst neue Seiten an dir – auf der Bühne oder im Hintergrund.  
-  </p>
-  <p>
-  Gemeinsam bereiten wir einen Auftritt vor. Dabei zählen nicht Perfektion oder Applaus, sondern dein Weg:  
-  Wie du dich zeigst, mit anderen kooperierst, Neues ausprobierst, und mit Hindernissen umgehst.  
-  </p>
-  <p>
-  Jede Bühne ist anders – und manchmal findet sie gar nicht statt. Was zählt, ist der Prozess.  
-  Ob du spielst, Licht machst oder baust: <strong>Du gestaltest mit.</strong>  
-  Und mehr noch: <strong>Du wirst Akteur*in deiner eigenen Genesung.</strong>
-  </p>
-
-  <h3><strong>Ergotheater ist Betätigung auf der Bühne</strong></h3><br>
-  <div class="text-left">
-  <p><strong>Zielgruppe:</strong><br><br>
-   Das Ergotheater ist ein gruppentherapeutisches Angebot für Erwachsene mit psychischen 
-
-Herausforderungen. Es richtet sich insbesondere an Menschen mit affektiven Störungen,
-Persönlichkeitsstörungen oder Suchterkrankungen. Menschen mit Sprachschwierigkeiten
-sind ebenfalls herzlich willkommen.
-
-    <br> Eine Teilnahme während akuter psychotischer Episoden oder Kriseninterventionen ist nicht vorgesehen.
-    Weitere therapeutische Anbindung ist von Vorteil.
-  </p>
-
-  <p><strong>Ziele der Maßnahme:</strong></p>
-  <ul>
-    <li><strong>Psychosoziale Integration</strong> durch erlebnisorientiertes Handeln</li>
-    <li><strong>Stabilisierung und Prävention</strong> durch strukturierte Gruppenarbeit</li>
-    <li><strong>Vorbereitung beruflicher Teilhabe </strong> durch Förderung alltagsrelevanter Fähigkeiten</li>
-  </ul>
-
-  <p><strong>Dauer und Setting:</strong></p>
-  <ul>
-    <li>12 Wochen</li>
-    <li>1–2 Einheiten pro Woche</li>
-    <li>je 90 Minuten</li>
-    <li>Gruppe mit 8–12 Akteur*innen</li>
-    <li>einmalig angeboten (ggf. wiederholbar)</li>
-  </ul>
-
-  <p><strong>Inhalte und Förderbereiche:</strong></p>
-  <table border="1" cellpadding="6" cellspacing="0">
-    <tr>
-      <th>Förderbereich</th><th>Beispiele</th>
-    </tr>
-    <tr>
-      <td><strong>Kognitiv</strong></td><td>Gedächtnis, Konzentration, Planung, Organisation</td>
-    <tr>
-      <td><strong>Motorisch</strong></td><td>Grob- und Feinmotorik, Koordination, Körperhaltung</td>
-    </tr>
-    <tr>
-      <td><strong>Sozial</strong></td><td>Kommunikation, Konfliktfähigkeit, Äußerung von Bedürfnissen</td>
-    </tr>
-    <tr>
-      <td><strong>Emotional</strong></td><td>Selbstwahrnehmung, Umgang mit Kritik, Abgrenzung, Emotionsregulation</td>
-    </tr>
-    <tr>
-      <td><strong>Handwerklich/Digital</strong></td><td>Bühnenbild, Kostüm, Medienarbeit</td>
-    </tr>
-  </table>
-
-<br> <p><strong>Phasenmodell der Proben:</strong></p> <ol> <li><strong>Selbstwahrnehmung:</strong> Wie identifiziere ich mich? Eigene Fähigkeiten, Ressourcen sowie Grenzen und Bedürfnisse erkennen. Meine Werte sowie meine aktive Rolle in der Gesellschaft übernehmen</li> <li><strong>Umweltwahrnehmung:</strong> Welche Wirkung hat der Raum und die anderen auf mich. Wie funktioniere ich abhängig vom Setting?</li> <li><strong>Zielsetzung:</strong> Welche Rolle habe ich? Wie kann ich diese Rolle erreichen? Wie äußere effektiv meine Bedürfnisse damit ich besser handeln kann?</li> <li><strong>Handlungsphase:</strong> Handlung-Reflexion-Anpassung. Akteur*in als handelndes Wesen im Stück. Wiederholung. Transfer im Leben</li> <li><strong>Abschlussphase:</strong> (optional) Ergebnispräsentation, interne oder externe Aufführung</li> <li><strong>Reflexion:</strong> Abschlussgespräch, Verabschiedung oder ggf neue Zielsetzung</li> </ol>
-
-     <h4>bis der Handlungsphase: <strong>Einstieg jederzeit möglich...</strong></h4>
-  <div class="text-justify">
-  <p><br><br>
-    Ergotheater – ein Safe Space. Alle Menschen, die einen sicheren Ort brauchen, sind bei uns willkommen.
-    Zu Beginn ist der Einstieg jederzeit möglich . Doch mit der Handlungsphase schließen 
-    wir die Gruppe – nicht, um auszugrenzen, sondern um den geschützten Raum zu bewahren.
-    <br> Ein Safe Space ist dort, wo Menschen sich zeigen dürfen – mit allem, was sie sind. 
-    Wo Ausdruck erlaubt ist, Fehler willkommen sind und niemand beurteilt wird.
-  </p>
-    
-    
-  <p><strong>Evaluation:</strong></p>
-  
-    <li>Selbst- und Fremdeinschätzungsbögen (z. B. SMART-Zielkontrolle)</li>
-    <li>ggf. Videoaufnahme des Ergebnisses zur Reflexion</li>
-  
-
-</div> <br>
-
-    </p>
-    <div class="text-center">
-      <a class="btn btn-info btn-lg" href="#contact">Mehr erfahren</a>
-      <a class="btn btn-top btn-lg" href="#top">Zum Seitenanfang</a>
-    </div>
-  </div>
-</div>
-
-</div> </section>
-
-<section id="gallery-c" class="gallery-2 mb-5"> <div class="container-fluid d-none d-sm-block"> <div class="row mt-5 no-gutters"> <div class="col-sm-6 col-md-3 item" style="background-image: url(img/gB1.png)"> </div> <div class="col-sm-6 col-md-3 item" style="background-image: url(img/gB2.png)"> </div> <div class="col-sm-6 col-md-3 item" style="background-image: url(img/gB3.png)"> </div> <div class="col-sm-6 col-md-3 item" style="background-image: url(img/gB4.png)"> </div> </div> </div> </section>
-
-<section id="angebote" class="content-5"> <div class="container mt-5 mb-5 pl-4 pr-4"> <div class="text-center"> <h2><strong>Unsere Angebote im Ergotheater</strong></h2> <div class="divider"></div> <h3 class="text-center">Theaterpädagogische Handlungen</h3> <div class="divider"></div> <div id="class-private" class="row justify-center mt-5"> <div class="col-md-6 text-center"> <img class="mb-4 img-fluid" src="img/Body.png" style="width: 486px;"> </div> <div class="col-md-6 pl-5 pr-5 text-left"> <h3> <small class="text-muted">Aktivierung von Körper und Stimme</small></h3> <p class="mt-4 mb-4">Mit Spielen und Musik wecken wir unser inneres Kind und entwickeln verloren geglaubte Fähigkeiten wie Kreativität, Selbstvertrauen und lösungsorientiertes Denken. </p> <p class="mt-4 mb-4">
-
-  </div>
-</div>
-
-<div id="class-private" class="row justify-center mt-5"> <div class="col-md-6 text-center"> <img class="mb-4 img-fluid" src="img/Theater Methode.png" style="width: 486px;"> </div> <div class="col-md-6 pl-5 pr-5 text-left"> <h3> <small class="text-muted">Textarbeit mit der Acta-Est-Methode - stylisiertes narratives Theater</small></h3> <p class="mt-4 mb-4">Die methodische Arbeit mit Texten aus dem internationalen Repertoire fördert sowohl Fähigkeiten wie Gedächtnis und Konzentration als auch das Erleben von Erfolg. Das Niveau der Texte bleibt stets im Rahmen der individuellen Lernzone der jeweiligen Teilnehmenden.</p>
-
-    <p class="mt-4 mb-4">
-
-            </div>
-          </div>
-    
-      <div id="class-private" class="row justify-center mt-5">
-         <div class="col-md-6 text-center">
-            <img class="mb-4 img-fluid" src="img/Lampenfieber.png"
-                 style="width: 486px;">
-          </div>
-          <div class="col-md-6 pl-5 pr-5 text-left">
-            <h3>
-              <small class="text-muted">Die Akteur*innen mit dem "Lampenfieber"</small></h3>
-            <p class="mt-4 mb-4">Das Ergotheater hat die Aufgabe, zu ermutigen und zu motivieren.
-
-Wir verlassen aktiv unsere Komfortzone – mit Respekt vor den Grenzen unserer Akteurinnen.
-Das Theater vereint mehrere Bereiche und Tätigkeiten, die gleichwertig sind: Unterstützung bei Bühnenbild, Licht und Ton ist keineswegs zu unterschätzen.
-Das Mitmachen auf der Bühne bleibt für die Akteurinnen freiwillig.
-
-</p>
-
-      <p class="mt-4 mb-4">
+                <br> <br>
+                <b><span style="color: green; 
+                    font-weight: bold;">Ganz gleich, ob auf der Bühne oder im Hintergrund:<br>Du spielst eine große Rolle.</span></b></p>
+          <div class="list-group">
 
           </div>
+             <p class="lead">
+            <a href="https://www.facebook.com/profile.php?id=61576335102510"
+               class="btn btn-facebook btn-lg mb-2 mr-2 ml-2 pill-btn">
+              <i class="icon socicon-facebook"></i>Facebook</a>
+              <a href="https://www.instagram.com/ergotheater/"
+               class="btn btn-insta btn-lg mb-2 mr-2 ml-2 pill-btn">
+              <i class="icon socicon-instagram"></i><b>Instagram</b></a>
+            <a href="#contact"
+               class="btn btn-danger btn-lg mb-2 mr-2 ml-2 pill-btn">
+              <i class="icon socicon-mail"></i>Kontakt</a>
+          </p>
         </div>
-
-<a class="btn btn-top btn-lg" href="#top">Zum Seitenanfang</a>
-<div class="divider"></div>
-
-<h3 class="text-center">Ergotherapeutische Handlungen</h3>
-  <div class="divider"></div>
-  <div id="class-private" class="row justify-center mt-5">
-   <div class="col-md-6 text-center">
-      <img class="mb-4 img-fluid" src="img/einzel.png"
-           style="width: 486px;">
-    </div>
-    <div class="col-md-6 pl-5 pr-5 text-left">
-      <h3>
-        <small class="text-muted">Einzelgespräche</small></h3>
-      <p class="mt-4 mb-4">Der Ergotherapeut erkennt nicht nur, was machbar ist und was nicht, sondern auch, worin genau die Schwierigkeiten liegen – und wie man ihnen begegnen kann: durch Edukation, Anpassung oder das (Wieder)Erlernen von Fähigkeiten.
-
-<BR>Auch im Rahmen des Ergotheaters gibt es Raum für Einzelgespräche – selbst wenn die Themen nicht in direktem Zusammenhang mit dem Theaterprojekt stehen.
-
-</p> <p class="mt-4 mb-4">
-
+      </div>
     </div>
   </div>
- <div id="class-private" class="row justify-center mt-5">
+</section>
+</section>
+
+  <div class="container text-center mt-4 mb-2">
+  <p style="color: #444444; font-weight: bold; font-size: 1.1em;">
+    Die Bilder wurden von einer KI generiert und orientieren sich an realen Fotovorlagen
+  </p>
+</div>
+  
+  <section id="gallery-d" class="gallery-2 mb-5">
+  <div class="container-fluid d-none d-sm-block">
+    <div class="row mt-5 no-gutters">
+      <div class="col-sm-6 col-md-3 item"
+           style="background-image: url(img/gA1.png)">
+      </div>
+      <div class="col-sm-6 col-md-3 item"
+           style="background-image: url(img/gA2.png)">
+      </div>
+      <div class="col-sm-6 col-md-3 item"
+           style="background-image: url(img/gA3.png)">
+      </div>
+      <div class="col-sm-6 col-md-3 item"
+           style="background-image: url(img/gA4.png)">
+      </div>
+    </div>
+  </div>
+</section>
+
+  <section id="Konzept" class="content-5">
+  <div class="container mt-5 mb-5 pl-4 pr-4">
+    <div class="text-center">
+      <h2><strong>Das Konzept</strong></h2>
+      <div class="divider"></div>
+      <div class="text-left">
+        <h3><strong>Ergotherapie und Theater in Köln</strong></h3>
+        <p><br>
+  <strong>Ergotheater</strong> ist ein ergotherapeutisch begleitetes Gruppenangebot
+ für Erwachsene, bei dem sich alles um Theater, Begegnung und persönliche Entwicklung dreht. 
+In einem festen Zeitraum von zwölf Wochen arbeitet die Gruppe an einem gemeinsamen 
+Theaterprojekt. Dabei geht es nicht nur ums Schauspiel – sondern um viel mehr:
+        <br><br>
+        Du kannst dich kreativ einbringen, neue Rollen ausprobieren oder dich auch im Hintergrund engagieren – 
+        z. B. in Technik, Requisite oder Organisation. Körperwahrnehmung, Sprechübungen, Rollenspiele und
+        thematische Gespräche gehören genauso dazu wie echte Bühnenmomente – wenn du möchtest.<br>
+        <strong>Du brauchst keine Vorerfahrung. Und du musst nicht auf die Bühne. </strong>
+        Wer lieber hinter den Kulissen mitarbeitet, ist genauso ein*e wichtige*r Akteur*in.
+        <br><br>
+        Das Ergotheater bietet dir:
+        <br>
+<ul>
+        <li>eine feste Struktur im Alltag</li>
+        <li>einen sicheren Raum, um dich auszuprobieren</li>
+        <li>Kontakt mit anderen Menschen mit ähnlichen Herausforderungen</li>
+        <li>die Chance, dich selbstwirksam und wertvoll zu erleben</li> 
+</ul>
+            Geleitet wird das Ergotheater von Antonis Chrysoulakis (staatlich anerkannter Ergotherapeut mit langjähriger Theatererfahrung).
+<br>
+<br>
+      
+      <h3><strong>Akteur*in heißt: Ich bin Mitgestalter*in</strong></h3>
+      <p><br>
+        Im <strong>Ergotheater</strong> sind alle Mitwirkenden <strong>Akteur*innen</strong> – unabhängig davon, ob sie spielen, Technik betreuen oder mitgestalten.  
+      Sie handeln aktiv – im Projekt und in ihrem eigenen Leben
+      </p>
+      <p>
+      Du bist nicht einfach Teilnehmer*in.  
+      Du übernimmst Verantwortung, entfaltest deine Fähigkeiten und entdeckst neue Seiten an dir – auf der Bühne oder im Hintergrund.  
+      </p>
+      <p>
+      Gemeinsam bereiten wir einen Auftritt vor. Dabei zählen nicht Perfektion oder Applaus, sondern dein Weg:  
+      Wie du dich zeigst, mit anderen kooperierst, Neues ausprobierst, und mit Hindernissen umgehst.  
+      </p>
+      <p>
+      Jede Bühne ist anders – und manchmal findet sie gar nicht statt. Was zählt, ist der Prozess.  
+      Ob du spielst, Licht machst oder baust: <strong>Du gestaltest mit.</strong>  
+      Und mehr noch: <strong>Du wirst Akteur*in deiner eigenen Genesung.</strong>
+      </p>
+
+      <h3><strong>Ergotheater ist Betätigung auf der Bühne</strong></h3><br>
+      <div class="text-left">
+      <p><strong>Zielgruppe:</strong><br><br>
+       Das Ergotheater ist ein gruppentherapeutisches Angebot für Erwachsene mit psychischen 
+Herausforderungen. Es richtet sich insbesondere an Menschen mit affektiven Störungen, 
+Persönlichkeitsstörungen oder Suchterkrankungen. Menschen mit Sprachschwierigkeiten 
+sind ebenfalls herzlich willkommen.
+ 
+        <br> Eine Teilnahme während akuter psychotischer Episoden oder Kriseninterventionen ist nicht vorgesehen.
+        Weitere therapeutische Anbindung ist von Vorteil.
+      </p>
+
+      <p><strong>Ziele der Maßnahme:</strong></p>
+      <ul>
+        <li><strong>Psychosoziale Integration</strong> durch erlebnisorientiertes Handeln</li>
+        <li><strong>Stabilisierung und Prävention</strong> durch strukturierte Gruppenarbeit</li>
+        <li><strong>Vorbereitung beruflicher Teilhabe </strong> durch Förderung alltagsrelevanter Fähigkeiten</li>
+      </ul>
+
+      <p><strong>Dauer und Setting:</strong></p>
+      <ul>
+        <li>12 Wochen</li>
+        <li>1–2 Einheiten pro Woche</li>
+        <li>je 90 Minuten</li>
+        <li>Gruppe mit 8–12 Akteur*innen</li>
+        <li>einmalig angeboten (ggf. wiederholbar)</li>
+      </ul>
+
+      <p><strong>Inhalte und Förderbereiche:</strong></p>
+      <table border="1" cellpadding="6" cellspacing="0">
+        <tr>
+          <th>Förderbereich</th><th>Beispiele</th>
+        </tr>
+        <tr>
+          <td><strong>Kognitiv</strong></td><td>Gedächtnis, Konzentration, Planung, Organisation</td>
+        <tr>
+          <td><strong>Motorisch</strong></td><td>Grob- und Feinmotorik, Koordination, Körperhaltung</td>
+        </tr>
+        <tr>
+          <td><strong>Sozial</strong></td><td>Kommunikation, Konfliktfähigkeit, Äußerung von Bedürfnissen</td>
+        </tr>
+        <tr>
+          <td><strong>Emotional</strong></td><td>Selbstwahrnehmung, Umgang mit Kritik, Abgrenzung, Emotionsregulation</td>
+        </tr>
+        <tr>
+          <td><strong>Handwerklich/Digital</strong></td><td>Bühnenbild, Kostüm, Medienarbeit</td>
+        </tr>
+      </table>
+<br>
+      <p><strong>Phasenmodell der Proben:</strong></p>
+      <ol>
+        <li><strong>Selbstwahrnehmung:</strong> Wie identifiziere ich mich? Eigene Fähigkeiten, Ressourcen sowie Grenzen und Bedürfnisse erkennen. Meine Werte sowie meine aktive Rolle in der Gesellschaft übernehmen</li>
+        <li><strong>Umweltwahrnehmung:</strong> Welche Wirkung hat der Raum und die anderen auf mich. Wie funktioniere ich abhängig vom Setting?</li>
+        <li><strong>Zielsetzung:</strong> Welche Rolle habe ich? Wie kann ich diese Rolle erreichen?   Wie äußere effektiv meine Bedürfnisse damit ich besser handeln kann?</li>
+        <li><strong>Handlungsphase:</strong> Handlung-Reflexion-Anpassung. Akteur*in als handelndes Wesen im Stück. Wiederholung. Transfer im Leben</li>
+        <li><strong>Abschlussphase:</strong> (optional) Ergebnispräsentation, interne oder externe Aufführung</li>
+        <li><strong>Reflexion:</strong> Abschlussgespräch, Verabschiedung oder ggf neue Zielsetzung</li>
+      </ol>
+
+        
+         <h4>bis der Handlungsphase: <strong>Einstieg jederzeit möglich...</strong></h4>
+      <div class="text-justify">
+      <p><br><br>
+        Ergotheater – ein Safe Space. Alle Menschen, die einen sicheren Ort brauchen, sind bei uns willkommen.
+        Zu Beginn ist der Einstieg jederzeit möglich . Doch mit der Handlungsphase schließen 
+        wir die Gruppe – nicht, um auszugrenzen, sondern um den geschützten Raum zu bewahren.
+        <br> Ein Safe Space ist dort, wo Menschen sich zeigen dürfen – mit allem, was sie sind. 
+        Wo Ausdruck erlaubt ist, Fehler willkommen sind und niemand beurteilt wird.
+      </p>
+        
+        
+      <p><strong>Evaluation:</strong></p>
+      
+        <li>Selbst- und Fremdeinschätzungsbögen (z. B. SMART-Zielkontrolle)</li>
+        <li>ggf. Videoaufnahme des Ergebnisses zur Reflexion</li>
+      
+</div>
+        <br>
+     
+        </p>
+        <div class="text-center">
+          <a class="btn btn-info btn-lg" href="#contact">Mehr erfahren</a>
+          <a class="btn btn-top btn-lg" href="#top">Zum Seitenanfang</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="gallery-c" class="gallery-2 mb-5">
+  <div class="container-fluid d-none d-sm-block">
+    <div class="row mt-5 no-gutters">
+      <div class="col-sm-6 col-md-3 item"
+           style="background-image: url(img/gB1.png)">
+      </div>
+      <div class="col-sm-6 col-md-3 item"
+           style="background-image: url(img/gB2.png)">
+      </div>
+      <div class="col-sm-6 col-md-3 item"
+           style="background-image: url(img/gB3.png)">
+      </div>
+      <div class="col-sm-6 col-md-3 item"
+           style="background-image: url(img/gB4.png)">
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="angebote" class="content-5">
+      <div class="container mt-5 mb-5 pl-4 pr-4">
+        <div class="text-center">
+          <h2><strong>Unsere Angebote im Ergotheater</strong></h2>
+    <div class="divider"></div>
+    <h3 class="text-center">Theaterpädagogische Handlungen</h3>
+    <div class="divider"></div>
+    <div id="class-private" class="row justify-center mt-5">
+     <div class="col-md-6 text-center">
+        <img class="mb-4 img-fluid" src="img/Body.png"
+             style="width: 486px;">
+      </div>
+      <div class="col-md-6 pl-5 pr-5 text-left">
+        <h3>
+          <small class="text-muted">Aktivierung von Körper und Stimme</small></h3>
+        <p class="mt-4 mb-4">Mit Spielen und Musik wecken wir unser inneres Kind und entwickeln verloren
+          geglaubte Fähigkeiten wie Kreativität, Selbstvertrauen und lösungsorientiertes Denken. </p>
+        <p class="mt-4 mb-4">
+          
+      </div>
+    </div>
+   <div id="class-private" class="row justify-center mt-5">
+               <div class="col-md-6 text-center">
+                  <img class="mb-4 img-fluid" src="img/Theater Methode.png"
+                       style="width: 486px;">
+                </div>
+                <div class="col-md-6 pl-5 pr-5 text-left">
+                  <h3>
+                    <small class="text-muted">Textarbeit mit der Acta-Est-Methode - stylisiertes narratives Theater</small></h3>
+                  <p class="mt-4 mb-4">Die methodische Arbeit mit Texten aus dem internationalen Repertoire fördert sowohl Fähigkeiten wie Gedächtnis und Konzentration als auch das Erleben von Erfolg. Das Niveau der Texte bleibt stets im Rahmen der individuellen Lernzone der jeweiligen Teilnehmenden.</p>
+                  
+        <p class="mt-4 mb-4">
+
+                </div>
+              </div>
+        
+          <div id="class-private" class="row justify-center mt-5">
              <div class="col-md-6 text-center">
-                <img class="mb-4 img-fluid" src="img/begleitung.png"
+                <img class="mb-4 img-fluid" src="img/Lampenfieber.png"
                      style="width: 486px;">
               </div>
               <div class="col-md-6 pl-5 pr-5 text-left">
                 <h3>
-                  <small class="text-muted">Therapeutische Begleitung bei den Handlungen</small></h3>
-                <p class="mt-4 mb-4">Akteur*in bedeutet kein Selbstläufer*in. Der Ergotherapeut begleitet die Akteur*innen bei ihren Handlungen auf der Bühne, 
-                  beobachtet deren Entwicklung und unterstützt gezielt den Transfer in den Alltag. 
-                  Dieser Prozess verläuft individuell und organisch – orientiert an den jeweiligen Ressourcen und Zielen der Akteur*innen.</p>
+                  <small class="text-muted">Die Akteur*innen mit dem "Lampenfieber"</small></h3>
+                <p class="mt-4 mb-4">Das Ergotheater hat die Aufgabe, zu ermutigen und zu motivieren.
+Wir verlassen aktiv unsere Komfortzone – mit Respekt vor den Grenzen unserer Akteur*innen.
+Das Theater vereint mehrere Bereiche und Tätigkeiten, die gleichwertig sind: Unterstützung bei Bühnenbild, Licht und Ton ist keineswegs zu unterschätzen.
+Das Mitmachen auf der Bühne bleibt für die Akteur*innen freiwillig.
+ </p>
 
-      <p class="mt-4 mb-4">
+          <p class="mt-4 mb-4">
 
               </div>
             </div>
 
-        <div id="class-private" class="row justify-center mt-5">
-           <div class="col-md-6 text-center">
-              <img class="mb-4 img-fluid" src="img/vortrag.png"
-                   style="width: 486px;">
-            </div>
-            <div class="col-md-6 pl-5 pr-5 text-left">
-              <h3>
-                <small class="text-muted">Vorträge und Workshops</small></h3>
-              <p class="mt-4 mb-4"> Begleitend zum Theaterprozess bieten wir praxisnahe Impulse, die dich auch über das Projekt hinaus stärken können:
+<a class="btn btn-top btn-lg" href="#top">Zum Seitenanfang</a>
+          <div class="divider"></div>
+          
+              
+    <h3 class="text-center">Ergotherapeutische Handlungen</h3>
+      <div class="divider"></div>
+      <div id="class-private" class="row justify-center mt-5">
+       <div class="col-md-6 text-center">
+          <img class="mb-4 img-fluid" src="img/einzel.png"
+               style="width: 486px;">
+        </div>
+        <div class="col-md-6 pl-5 pr-5 text-left">
+          <h3>
+            <small class="text-muted">Einzelgespräche</small></h3>
+          <p class="mt-4 mb-4">Der Ergotherapeut erkennt nicht nur, was machbar ist und was nicht, sondern auch, worin genau die Schwierigkeiten liegen – und wie man ihnen begegnen kann: durch Edukation, Anpassung oder das (Wieder)Erlernen von Fähigkeiten.
+<BR>Auch im Rahmen des Ergotheaters gibt es Raum für Einzelgespräche – selbst wenn die Themen nicht in direktem Zusammenhang mit dem Theaterprojekt stehen.
+</p>
+          <p class="mt-4 mb-4">
 
-<ul> <li>Workshops zum <strong>metakognitiven Training</strong></li> <li>gezieltes <strong>Kommunikationscoaching</strong></li> <li>ein <strong>Kurs für Zeitmanagement</strong></li> <li><strong>Training für Vorstellungsgespräche</strong></li> <li>und weitere alltagsnahe Themen, die dich weiterbringen</li> </ul>
+        </div>
+      </div>
+     <div id="class-private" class="row justify-center mt-5">
+                 <div class="col-md-6 text-center">
+                    <img class="mb-4 img-fluid" src="img/begleitung.png"
+                         style="width: 486px;">
+                  </div>
+                  <div class="col-md-6 pl-5 pr-5 text-left">
+                    <h3>
+                      <small class="text-muted">Therapeutische Begleitung bei den Handlungen</small></h3>
+                    <p class="mt-4 mb-4">Akteur*in bedeutet kein Selbstläufer*in. Der Ergotherapeut begleitet die Akteur*innen bei ihren Handlungen auf der Bühne, 
+                      beobachtet deren Entwicklung und unterstützt gezielt den Transfer in den Alltag. 
+                      Dieser Prozess verläuft individuell und organisch – orientiert an den jeweiligen Ressourcen und Zielen der Akteur*innen.</p>
+
+          <p class="mt-4 mb-4">
+
+                  </div>
+                </div>
+
+            <div id="class-private" class="row justify-center mt-5">
+               <div class="col-md-6 text-center">
+                  <img class="mb-4 img-fluid" src="img/vortrag.png"
+                       style="width: 486px;">
+                </div>
+                <div class="col-md-6 pl-5 pr-5 text-left">
+                  <h3>
+                    <small class="text-muted">Vorträge und Workshops</small></h3>
+                  <p class="mt-4 mb-4"> Begleitend zum Theaterprozess bieten wir praxisnahe Impulse, die dich auch über das Projekt hinaus stärken können:
+  <ul> <li>Workshops zum <strong>metakognitiven Training</strong></li> 
+  <li>gezieltes <strong>Kommunikationscoaching</strong></li> 
+  <li>ein <strong>Kurs für Zeitmanagement</strong></li> 
+  <li><strong>Training für Vorstellungsgespräche</strong></li> 
+  <li>und weitere alltagsnahe Themen, die dich weiterbringen</li> </ul>
 
 So wächst du nicht nur im Projekt – sondern auch darüber hinaus.</p>
 
-        <p class="mt-4 mb-4">
-
+            <p class="mt-4 mb-4">
 <a class="btn btn-top btn-lg" href="#top">Zum Seitenanfang</a><br>
-</div>
-</div>
-</div>
-<div class="divider"></div>
+                </div>
+              </div>
+        </div>
+               <div class="divider"></div>
+  
+           </section>
+  
+<section id="gallery-d" class="gallery-2 mb-5">
+  <div class="container-fluid d-none d-sm-block">
+    <div class="row mt-5 no-gutters">
+      <div class="col-sm-6 col-md-3 item"
+           style="background-image: url(img/gC1.png)">
+      </div>
+      <div class="col-sm-6 col-md-3 item"
+           style="background-image: url(img/gC2.png)">
+      </div>
+      <div class="col-sm-6 col-md-3 item"
+           style="background-image: url(img/gC3.png)">
+      </div>
+      <div class="col-sm-6 col-md-3 item"
+           style="background-image: url(img/gC4.png)">
+      </div>
+    </div>
+  </div>
+</section>
+  
+<section id="aktuell" class="content-5">
+  <div class="container">
+    <h2 class="text-center"><b>Aktuelle Termine</b></h2>
+    <div class="divider"></div>
+    <div id="class-english" class="row justify-center mt-5">
+      <div class="col-md-6 text-center">
+        <img class="mb-4 img-fluid" src="img/welcome.png"
+             style="width: 486px;">
+      </div>
+     
+      <section style="padding: 2em; background-color: #f9f9f9; border-radius: 12px;">
+  <h2 style="color: #2c2c2c;"><strong>Sei von Anfang an dabei – als Akteur*in!</strong></h2>
+  <p style="font-size: 1.1em;">
+    Das <strong>Ergotheater</strong> startet bald – aber nicht ohne dich.
+  </p>
+  <p>
+    Wir planen den Beginn dieser einzigartigen Gruppenmaßnahme. Bevor es losgeht, laden wir dich ein, Teil des Entstehungsprozesses zu werden.
+  </p>
+  <p>
+    🔍 <strong>Hast du Interesse?</strong> <br>Dann melde dich bei uns – wir schicken dir einen kurzen Fragebogen. <br>
+    Damit hilfst du uns, das Angebot so zu gestalten, dass es wirklich zu dir passt.
+  </p>
+  <p>
+    📩<strong> Nach deiner Rückmeldung</strong> laden wir dich zu einem persönlichen Infotreffen ein. <br>
+    Dort kannst du uns kennenlernen, mehr über das Projekt erfahren – und entscheiden, ob du dabei sein möchtest.
+  </p>
+  <p>
+    🎭 Das Ergotheater ist kein Kurs von der Stange. Du bist kein*e Teilnehmer*in. <strong>Du bist Akteur*in.</strong>
+  </p>
+  <p style="margin-top: 1.5em; font-size: 1.1em;">
+    <strong>Jetzt vormerken – später entscheiden.</strong> <br>Schreib uns eine kurze Nachricht!
+  
+  
+      <a href="#contact"
+               class="btn btn-danger btn-lg mb-2 mr-2 ml-2 pill-btn">
+              <i class="icon socicon-mail"></i>Kontakt</a>
+          <a class="btn btn-top btn-lg" href="#top">Zum Seitenanfang</a></div>
+    
+   </p>
+</section>
+      
+ 
+          
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+  
 
-       </section>
-
-<section id="gallery-d" class="gallery-2 mb-5"> <div class="container-fluid d-none d-sm-block"> <div class="row mt-5 no-gutters"> <div class="col-sm-6 col-md-3 item" style="background-image: url(img/gC1.png)"> </div> <div class="col-sm-6 col-md-3 item" style="background-image: url(img/gC2.png)"> </div> <div class="col-sm-6 col-md-3 item" style="background-image: url(img/gC3.png)"> </div> <div class="col-sm-6 col-md-3 item" style="background-image: url(img/gC4.png)"> </div> </div> </div> </section>
-
-<section id="aktuell" class="content-5"> <div class="container"> <h2 class="text-center"><b>Aktuelle Termine</b></h2> <div class="divider"></div> <div id="class-english" class="row justify-center mt-5"> <div class="col-md-6 text-center"> <img class="mb-4 img-fluid" src="img/welcome.png" style="width: 486px;"> </div>
-
-  <section style="padding: 2em; background-color: #f9f9f9; border-radius: 12px;">
-
-<h2 style="color: #2c2c2c;"><strong>Sei von Anfang an dabei – als Akteur*in!</strong></h2> <p style="font-size: 1.1em;"> Das <strong>Ergotheater</strong> startet bald – aber nicht ohne dich. </p> <p> Wir planen den Beginn dieser einzigartigen Gruppenmaßnahme. Bevor es losgeht, laden wir dich ein, Teil des Entstehungsprozesses zu werden. </p> <p> 🔍 <strong>Hast du Interesse?</strong> <br>Dann melde dich bei uns – wir schicken dir einen kurzen Fragebogen. <br> Damit hilfst du uns, das Angebot so zu gestalten, dass es wirklich zu dir passt. </p> <p> 📩<strong> Nach deiner Rückmeldung</strong> laden wir dich zu einem persönlichen Infotreffen ein. <br> Dort kannst du uns kennenlernen, mehr über das Projekt erfahren – und entscheiden, ob du dabei sein möchtest. </p> <p> 🎭 Das Ergotheater ist kein Kurs von der Stange. Du bist kein*e Teilnehmer*in. <strong>Du bist Akteur*in.</strong> </p> <p style="margin-top: 1.5em; font-size: 1.1em;"> <strong>Jetzt vormerken – später entscheiden.</strong> <br>Schreib uns eine kurze Nachricht!
-
-  <a href="#contact"
-           class="btn btn-danger btn-lg mb-2 mr-2 ml-2 pill-btn">
-          <i class="icon socicon-mail"></i>Kontakt</a>
+<section id="about" class="gallery-2">
+  <div class="container-fluid mt-5 mb-5 pl-5 pr-5">
+    <div class="text-center">
+      <h3>
+        Antonis Chrysoulakis
+        <small class="text-muted"><strong>Ergotherapeut</strong> & <strong>Theatermacher</strong><br> Mitglied von DVE & WFOT</small>
+      </h3>
+      <p class="constrain-width mb-3 text-center">
+        <img src="img/chrys.png" alt="Antonis Chrysoulakis" class="mt-3 pb-3 pr-3 float-md-left img-rounded"/>
+      </p>
+    </div>
+    <div>
+      <p class="constrain-width mb-3">Ich komme aus Athen und lebe seit 2011 in Deutschland.
+Ich bin staatlich anerkannter Ergotherapeut und arbeite aktuell mit dem Schwerpunkt <strong>psychosozialer Bereich</strong> und <strong>Arbeitstherapie</strong>.
+<br> Nach meinem Theaterstudium habe ich inszeniert, 
+        unterrichtet und Gruppen geleitet. 2017 gründete ich in Deutschland das <strong> Acta Est Theaterstudio</strong>
+      </p>
+      <p class="constrain-width mb-3">Mit Sitz in Düsseldorf habe ich die Regie in zahlreichen Produktionen in
+        Kooperation mit Trägern wie<strong> Zakk, FFT, Schauspiel Köln, Diakonie, Multikulturellem Forum</strong> u.a. geführt.
+      </p>
+      <p class="constrain-width mb-3">Meine erste große Produktion in Deutschland war<strong> "Warum musste Theo sterben?"</strong> ein
+        Theaterstück, über die Morde des NSU. Es wurde u.a. im <strong>Schauspiel Köln</strong>, im <strong>Pathos-Theater
+        München</strong>, im <strong>FFT Düsseldorf</strong>, <strong>im Agora Castrop-Rauxel</strong>, in der <strong>Färberei Wuppertal</strong> gezeigt.
+      </p>
+     <p class="constrain-width mb-3">Mit dem <strong>Ergotheater</strong> verbinde ich beide Welten:
+        <br><strong>Therapie durch Handlung, Bühne als Lebensraum, Betätigung als Ausdruck</strong>.
+        <br> Ein Ort, an dem man <strong>„kein*e Zuschauer*in ist“</strong>, sondern <strong>Akteur*in</strong> – im Stück wie im eigenen Leben.
+      <div class="col-md-6 text-center">
       <a class="btn btn-top btn-lg" href="#top">Zum Seitenanfang</a></div>
+    </div>
+  </div>
+</section>
 
-</p> </section>
+<section id="gallery-d" class="gallery-2 mb-5">
+  <div class="container-fluid d-none d-sm-block">
+    <div class="row mt-5 no-gutters">
+      <div class="col-sm-6 col-md-3 item"
+           style="background-image: url(img/gE1.png)">
+      </div>
+      <div class="col-sm-6 col-md-3 item"
+           style="background-image: url(img/gE2.png)">
+      </div>
+      <div class="col-sm-6 col-md-3 item"
+           style="background-image: url(img/gE3.png)">
+      </div>
+      <div class="col-sm-6 col-md-3 item"
+           style="background-image: url(img/gE4.png)">
+      </div>
+    </div>
+  </div>
+</section>
+
+   <section id="contact" style="padding: 2em; background-color: green; border-radius: 12px; color: white;">
+  <h2 style="color: #2c2c2c;"><strong>Sei von Anfang an dabei – als Akteur*in!</strong></h2>
+
+  <h4 class="pt-2">Adresse</h4>
+  <p><a style="color: white;"strong>50858 Köln</a></p>
+
+  <h4 class="pt-2">Telefon</h4>
+  <p><a style="color: white;"strong>01590680xxxx</a></p>
+  <h4 class="pt-4">E-Mail</h4>
+  <p><a href="#contact" style="color: white;">ergotheater@actaest.de</a></p>
+     <div class="text-center">
+<form action="https://formsubmit.co/ergotheater@actaest.de" method="POST">
+  <label for="name">Name:</label><br>
+  <input type="text" name="name" required><br><br>
+
+  <label for="email">E-Mail:</label><br>
+  <input type="email" name="email" required><br><br>
+
+  <label for="message">Nachricht:</label><br>
+  <textarea name="message" rows="5" required></textarea><br><br>
+
+  <!-- Optional: success page -->
+  <input type="hidden" name="_next" value="https://ergotheater.de">
+
+  <!-- Optional: disable spam protection -->
+  <input type="hidden" name="_captcha" value="false">
+
+  <input type="submit" value="Nachricht jetzt senden">
+</form><br><br>
+
+  <a class="btn btn-top btn-lg" href="#top">Zum Seitenanfang</a>
+     </div>
+     </section>
 
 
-      </table>
+<footer class="footer-5">
+  <div class="container">
+    <div class="row">
+      <div class="col-md-12 text-center mt-1 mb-1 pt-1">
+        
+      </div>
+    </div>
+  </div>
+  <div class="container-fluid">
+    <div class="divider"></div>
+  </div>
+  <div class="container">
+    <div class="row">
+      <div class="col-md-6 text-center text-md-left mt-2 mb-3 pt-1">
+        <p class="copyright">Copyright © 2025 Acta Est Ergotheater |
+          <a href="" data-toggle="modal" data-target="#impressum">Impressum</a>
+        </p>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<div id="impressum" class="modal fade modal-fullscreen" tabindex="-1" role="dialog" aria-hidden="true">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalSmallLabel">Impressum</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <h4>Verantwortlich gemäß §6 Telemediengesetz (TMG) </h4>
+
+        <p>
+        Antonios Chrysoulakis<br/>
+        Leipziger Str. 18 * 50858, Köln * Deutschland<br/>
+        +49 (0) 15906808175 <br/>
+        info@actaest.de
+        </p>
+
+        <h4>Hinweise zum Copyright</h4>
+
+        <p>Bei Fragen zur Verwendung einzelner Bilder oder Inhalte dieser Website wenden Sie sich bitte direkt an mich.</p>
+
+        <h4>Website-Funktionalität</h4>
+
+        <p>Die Website befindet sich derzeit noch in der Entwicklung und wird fortlaufend aktualisiert.</p>
+
+        <h4>Ausführlicher Disclaimer</h4>
+
+        <p>Quelle: eRecht24.de – Internetrecht von Rechtsanwalt Sören Siebert</p>
+
+        <p>Die Inhalte unserer Seiten wurden mit größter Sorgfalt erstellt. Für die Richtigkeit, Vollständigkeit und Aktualität der Inhalte können wir jedoch keine Gewähr übernehmen. Als Diensteanbieter sind wir gemäß § 7 Abs.1 TMG für eigene Inhalte auf diesen Seiten nach den allgemeinen Gesetzen verantwortlich. Nach §§ 8 bis 10 TMG sind wir als Diensteanbieter jedoch nicht verpflichtet, übermittelte oder gespeicherte fremde Informationen zu überwachen oder nach Umständen zu forschen, die auf eine rechtswidrige Tätigkeit hinweisen. Verpflichtungen zur Entfernung oder Sperrung der Nutzung von Informationen nach den allgemeinen Gesetzen bleiben hiervon unberührt. Eine diesbezügliche Haftung ist jedoch erst ab dem Zeitpunkt der Kenntnis einer konkreten Rechtsverletzung möglich. Bei Bekanntwerden von entsprechenden Rechtsverletzungen werden wir diese Inhalte umgehend entfernen.</p>
+
+        <h4>Haftung für Links</h4>
+
+        <p>Unser Angebot enthält Links zu externen Webseiten Dritter, auf deren Inhalte wir keinen Einfluss haben. Deshalb können wir für diese fremden Inhalte auch keine Gewähr übernehmen. Für die Inhalte der verlinkten Seiten ist stets der jeweilige Anbieter oder Betreiber der Seiten verantwortlich. Die verlinkten Seiten wurden zum Zeitpunkt der Verlinkung auf mögliche Rechtsverstöße überprüft. Rechtswidrige Inhalte waren zum Zeitpunkt der Verlinkung nicht erkennbar. Eine permanente inhaltliche Kontrolle der verlinkten Seiten ist jedoch ohne konkrete Anhaltspunkte einer Rechtsverletzung nicht zumutbar. Bei Bekanntwerden von Rechtsverletzungen werden wir derartige Links umgehend entfernen.</p>
+
+        <h4>Urheberrecht</h4>
+
+        <p>Die durch die Seitenbetreiber erstellten Inhalte und Werke auf diesen Seiten unterliegen dem deutschen Urheberrecht. Die Vervielfältigung, Bearbeitung, Verbreitung und jede Art der Verwertung außerhalb der Grenzen des Urheberrechtes bedürfen der schriftlichen Zustimmung des jeweiligen Autors bzw. Erstellers. Downloads und Kopien dieser Seite sind nur für den privaten, nicht kommerziellen Gebrauch gestattet. Soweit die Inhalte auf dieser Seite nicht vom Betreiber erstellt wurden, werden die Urheberrechte Dritter beachtet. Insbesondere werden Inhalte Dritter als solche gekennzeichnet. Sollten Sie trotzdem auf eine Urheberrechtsverletzung aufmerksam werden, bitten wir um einen entsprechenden Hinweis. Bei Bekanntwerden von Rechtsverletzungen werden wir derartige Inhalte umgehend entfernen.</p>
+
+        <h4>Datenschutz</h4>
+
+        <p>Die Nutzung unserer Webseite ist in der Regel ohne Angabe personenbezogener Daten möglich. Soweit auf unseren Seiten personenbezogene Daten (beispielsweise Name, Anschrift oder eMail-Adressen) erhoben werden, erfolgt dies, soweit möglich, stets auf freiwilliger Basis. Diese Daten werden ohne Ihre ausdrückliche Zustimmung nicht an Dritte weitergegeben.</p>
+
+        <p>Wir weisen darauf hin, dass die Datenübertragung im Internet (z.B. bei der Kommunikation per E-Mail) Sicherheitslücken aufweisen kann. Ein lückenloser Schutz der Daten vor dem Zugriff durch Dritte ist nicht möglich.</p>
+
+        <p>Der Nutzung von im Rahmen der Impressumspflicht veröffentlichten Kontaktdaten durch Dritte zur Übersendung von nicht ausdrücklich angeforderter Werbung und Informationsmaterialien wird hiermit ausdrücklich widersprochen. Die Betreiber der Seiten behalten sich ausdrücklich rechtliche Schritte im Falle der unverlangten Zusendung von Werbeinformationen, etwa durch Spam-Mails, vor.</p>
+      </div>
     </div>
   </div>
 </div>
 
-</div> </section>
-
-<section id="about" class="gallery-2"> <div class="container-fluid mt-5 mb-5 pl-5 pr-5"> <div class="text-center"> <h3> Antonis Chrysoulakis <small class="text-muted"><strong>Ergotherapeut</strong> & <strong>Theatermacher</strong><br> Mitglied von DVE & WFOT</small> </h3> <p class="constrain-width mb-3 text-center"> <img src="img/chrys.png" alt="Antonis Chrysoulakis" class="mt-3 pb-3 pr-3 float-md-left img-rounded"/> </p> </div> <div> <p class="constrain-width mb-3">Ich komme aus Athen und lebe seit 2011 in Deutschland. Ich bin staatlich anerkannter Ergotherapeut und arbeite aktuell mit dem Schwerpunkt <strong>psychosozialer Bereich</strong> und <strong>Arbeitstherapie</strong>. <br> Nach meinem Theaterstudium habe ich inszeniert, unterrichtet und Gruppen geleitet. 2017 gründete ich in Deutschland das <strong> Acta Est Theaterstudio</strong> </p> <p class="constrain-width mb-3">Mit Sitz in Düsseldorf habe ich die Regie in zahlreichen Produktionen in Kooperation mit Trägern wie<strong> Zakk, FFT, Schauspiel Köln, Diakonie, Multikulturellem Forum</strong> u.a. geführt. </p> <p class="constrain-width mb-3">Meine erste große Produktion in Deutschland war<strong> "Warum musste Theo sterben?"</strong> ein Theaterstück, über die Morde des NSU. Es wurde u.a. im <strong>Schauspiel Köln</strong>, im <strong>Pathos-Theater München</strong>, im <strong>FFT Düsseldorf</strong>, <strong>im Agora Castrop-Rauxel</strong>, in der <strong>Färberei Wuppertal</strong> gezeigt. </p> <p class="constrain-width mb-3">Mit dem <strong>Ergotheater</strong> verbinde ich beide Welten: <br><strong>Therapie durch Handlung, Bühne als Lebensraum, Betätigung als Ausdruck</strong>. <br> Ein Ort, an dem man <strong>„kein*e Zuschauer*in ist“</strong>, sondern <strong>Akteur*in</strong> – im Stück wie im eigenen Leben. <div class="col-md-6 text-center"> <a class="btn btn-top btn-lg" href="#top">Zum Seitenanfang</a></div> </div> </div> </section>
-
-<section id="gallery-d" class="gallery-2 mb-5"> <div class="container-fluid d-none d-sm-block"> <div class="row mt-5 no-gutters"> <div class="col-sm-6 col-md-3 item" style="background-image: url(img/gE1.png)"> </div> <div class="col-sm-6 col-md-3 item" style="background-image: url(img/gE2.png)"> </div> <div class="col-sm-6 col-md-3 item" style="background-image: url(img/gE3.png)"> </div> <div class="col-sm-6 col-md-3 item" style="background-image: url(img/gE4.png)"> </div> </div> </div> </section>
-
-<section id="contact" style="padding: 2em; background-color: green; border-radius: 12px; color: white;"> <h2 style="color: #2c2c2c;"><strong>Sei von Anfang an dabei – als Akteur*in!</strong></h2>
-
-<h4 class="pt-2">Adresse</h4> <p><a style="color: white;"strong>50858 Köln</a></p>
-
-<h4 class="pt-2">Telefon</h4> <p><a style="color: white;"strong>01590680xxxx</a></p> <h4 class="pt-4">E-Mail</h4> <p><a href="#contact" style="color: white;">ergotheater@actaest.de</a></p> <div class="text-center"> <form action="https://formsubmit.co/ergotheater@actaest.de" method="POST"> <label for="name">Name:</label><br> <input type="text" name="name" required><br><br>
-
-<label for="email">E-Mail:</label><br>
-<input type="email" name="email" required><br><br>
-
-<label for="message">Nachricht:</label><br>
-
-<textarea name="message" rows="5" required></textarea><br><br>
-
-<!-- Optional: success page -->
-
-<input type="hidden" name="_next" value="https://ergotheater.de">
-
-<!-- Optional: disable spam protection -->
-
-<input type="hidden" name="_captcha" value="false">
-
-<input type="submit" value="Nachricht jetzt senden"> </form><br><br>
-
-<a class="btn btn-top btn-lg" href="#top">Zum Seitenanfang</a>
-</div>
-</section>
-
-<footer class="footer-5"> <div class="container"> <div class="row"> <div class="col-md-12 text-center mt-1 mb-1 pt-1">
-
-  </div>
-</div>
-
-</div> <div class="container-fluid"> <div class="divider"></div> </div> <div class="container"> <div class="row"> <div class="col-md-6 text-center text-md-left mt-2 mb-3 pt-1"> <p class="copyright">Copyright © 2025 Acta Est Ergotheater | <a href="" data-toggle="modal" data-target="#impressum">Impressum</a> </p> </div> </div> </div> </footer>
-
-<div id="impressum" class="modal fade modal-fullscreen" tabindex="-1" role="dialog" aria-hidden="true"> <div class="modal-dialog" role="document"> <div class="modal-content"> <div class="modal-header"> <h5 class="modal-title" id="modalSmallLabel">Impressum</h5> <button type="button" class="close" data-dismiss="modal" aria-label="Close"> <span aria-hidden="true">&times;</span> </button> </div> <div class="modal-body"> <h4>Verantwortlich gemäß §6 Telemediengesetz (TMG) </h4>
-
-    <p>
-    Antonios Chrysoulakis<br/>
-    Leipziger Str. 18 * 50858, Köln * Deutschland<br/>
-    +49 (0) 15906808175 <br/>
-    info@actaest.de
-    </p>
-
-    <h4>Hinweise zum Copyright</h4>
-
-    <p>Bei Fragen zur Verwendung einzelner Bilder oder Inhalte dieser Website wenden Sie sich bitte direkt an mich.</p>
-
-    <h4>Website-Funktionalität</h4>
-
-    <p>Die Website befindet sich derzeit noch in der Entwicklung und wird fortlaufend aktualisiert.</p>
-
-    <h4>Ausführlicher Disclaimer</h4>
-
-    <p>Quelle: eRecht24.de – Internetrecht von Rechtsanwalt Sören Siebert</p>
-
-    <p>Die Inhalte unserer Seiten wurden mit größter Sorgfalt erstellt. Für die Richtigkeit, Vollständigkeit und Aktualität der Inhalte können wir jedoch keine Gewähr übernehmen. Als Diensteanbieter sind wir gemäß § 7 Abs.1 TMG für eigene Inhalte auf diesen Seiten nach den allgemeinen Gesetzen verantwortlich. Nach §§ 8 bis 10 TMG sind wir als Diensteanbieter jedoch nicht verpflichtet, übermittelte oder gespeicherte fremde Informationen zu überwachen oder nach Umständen zu forschen, die auf eine rechtswidrige Tätigkeit hinweisen. Verpflichtungen zur Entfernung oder Sperrung der Nutzung von Informationen nach den allgemeinen Gesetzen bleiben hiervon unberührt. Eine diesbezügliche Haftung ist jedoch erst ab dem Zeitpunkt der Kenntnis einer konkreten Rechtsverletzung möglich. Bei Bekanntwerden von entsprechenden Rechtsverletzungen werden wir diese Inhalte umgehend entfernen.</p>
-
-    <h4>Haftung für Links</h4>
-
-    <p>Unser Angebot enthält Links zu externen Webseiten Dritter, auf deren Inhalte wir keinen Einfluss haben. Deshalb können wir für diese fremden Inhalte auch keine Gewähr übernehmen. Für die Inhalte der verlinkten Seiten ist stets der jeweilige Anbieter oder Betreiber der Seiten verantwortlich. Die verlinkten Seiten wurden zum Zeitpunkt der Verlinkung auf mögliche Rechtsverstöße überprüft. Rechtswidrige Inhalte waren zum Zeitpunkt der Verlinkung nicht erkennbar. Eine permanente inhaltliche Kontrolle der verlinkten Seiten ist jedoch ohne konkrete Anhaltspunkte einer Rechtsverletzung nicht zumutbar. Bei Bekanntwerden von Rechtsverletzungen werden wir derartige Links umgehend entfernen.</p>
-
-    <h4>Urheberrecht</h4>
-
-    <p>Die durch die Seitenbetreiber erstellten Inhalte und Werke auf diesen Seiten unterliegen dem deutschen Urheberrecht. Die Vervielfältigung, Bearbeitung, Verbreitung und jede Art der Verwertung außerhalb der Grenzen des Urheberrechtes bedürfen der schriftlichen Zustimmung des jeweiligen Autors bzw. Erstellers. Downloads und Kopien dieser Seite sind nur für den privaten, nicht kommerziellen Gebrauch gestattet. Soweit die Inhalte auf dieser Seite nicht vom Betreiber erstellt wurden, werden die Urheberrechte Dritter beachtet. Insbesondere werden Inhalte Dritter als solche gekennzeichnet. Sollten Sie trotzdem auf eine Urheberrechtsverletzung aufmerksam werden, bitten wir um einen entsprechenden Hinweis. Bei Bekanntwerden von Rechtsverletzungen werden wir derartige Inhalte umgehend entfernen.</p>
-
-    <h4>Datenschutz</h4>
-
-    <p>Die Nutzung unserer Webseite ist in der Regel ohne Angabe personenbezogener Daten möglich. Soweit auf unseren Seiten personenbezogene Daten (beispielsweise Name, Anschrift oder eMail-Adressen) erhoben werden, erfolgt dies, soweit möglich, stets auf freiwilliger Basis. Diese Daten werden ohne Ihre ausdrückliche Zustimmung nicht an Dritte weitergegeben.</p>
-
-    <p>Wir weisen darauf hin, dass die Datenübertragung im Internet (z.B. bei der Kommunikation per E-Mail) Sicherheitslücken aufweisen kann. Ein lückenloser Schutz der Daten vor dem Zugriff durch Dritte ist nicht möglich.</p>
-
-    <p>Der Nutzung von im Rahmen der Impressumspflicht veröffentlichten Kontaktdaten durch Dritte zur Übersendung von nicht ausdrücklich angeforderter Werbung und Informationsmaterialien wird hiermit ausdrücklich widersprochen. Die Betreiber der Seiten behalten sich ausdrücklich rechtliche Schritte im Falle der unverlangten Zusendung von Werbeinformationen, etwa durch Spam-Mails, vor.</p>
-  </div>
-</div>
-
-</div> </div>
-
 <!-- Google Tag Manager -->
-
-<script>(function (w, d, s, l, i) { w[l] = w[l] || []; w[l].push({ 'gtm.start': new Date().getTime(), event: 'gtm.js' }); var f = d.getElementsByTagName(s)[0], j = d.createElement(s), dl = l != 'dataLayer' ? '&l=' + l : ''; j.async = true; j.src = 'https://www.googletagmanager.com/gtm.js?id=' + i + dl; f.parentNode.insertBefore(j, f); })(window, document, 'script', 'dataLayer', 'GTM-WVPMP5R');</script>
-
+<script>(function (w, d, s, l, i) {
+  w[l] = w[l] || [];
+  w[l].push({
+    'gtm.start':
+        new Date().getTime(), event: 'gtm.js'
+  });
+  var f = d.getElementsByTagName(s)[0],
+      j = d.createElement(s), dl = l != 'dataLayer' ? '&l=' + l : '';
+  j.async = true;
+  j.src =
+      'https://www.googletagmanager.com/gtm.js?id=' + i + dl;
+  f.parentNode.insertBefore(j, f);
+})(window, document, 'script', 'dataLayer', 'GTM-WVPMP5R');</script>
 <!-- End Google Tag Manager -->
-
 <script src="//squaresend.com/squaresend.js"></script>
-
 <script src="js/main.min.js"></script>
-
 </body>
 
 </html>
